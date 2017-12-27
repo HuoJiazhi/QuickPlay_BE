@@ -1,33 +1,22 @@
 var express = require('express');
 var router = express.Router();
-
-var mysql      = require('mysql');
+var async = require('async');
+var mysql = require('mysql');
 var connection = mysql.createConnection({
-    host     : 'localhost',
-    user     : 'root',
-    password : '123456',
-    database : 'quickplay'
+    host: 'localhost',
+    user: 'root',
+    password: '123456',
+    database: 'quickplay'
 });
 connection.connect();
-router.post('/', function (req, res) {
-    if(checkUser(req.body.user,req.body.password)==0){
-        res.send("没有当前用户");
-    }else{
-        res.send("有当前用户");
-    }
 
-    //checkPassword(req.body.user,req.body.password);
-});
-
-function checkUser(user,password) {
+function checkUser(user, password) {
     var userExit = 0;
-    var that = this;
     connection.query('select * from user', function (error, results, fields) {
         if (error) throw error;
-        for(var i=0;i<results.length;i++){
-            if(results[i].User && user.toString() == results[i].User.toString()){
+        for (var i = 0; i < results.length; i++) {
+            if (results[i].User && user.toString() == results[i].User.toString()) {
                 userExit = 1;
-                checkPassword(user,password);
                 return userExit;
             }
         }
@@ -35,11 +24,76 @@ function checkUser(user,password) {
     });
 }
 
-function checkPassword(user,password) {
-    connection.query('select * from user', function (error, results, fields) {
+function checkPassword(user, password) {
+    var passCorrect = 0;
+    var sql = 'select Password from user where User = "' + user + '"';
+    connection.query(sql, function (error, results, fields) {
         if (error) throw error;
-        console.log('The solution is: ', results[0].User);
+        if (results[0].Password == password) {
+            passCorrect = 1;
+            console.log(passCorrect);
+            return passCorrect;
+        }
+        return passCorrect;
     });
 }
+
+var task = []
+router.post('/', function (req, res) {
+    var user = req.body.user;
+    var pass = req.body.password;
+    var message = '';
+    var tasks = [
+        function (callback) {
+            var user = req.body.user;
+            var pass = req.body.password;
+            callback(null,user, pass);
+        }, function (user, pass, callback) {
+            var userExit = 0;
+            connection.query('select * from user', function (error, results, fields) {
+                for (var i = 0; i < results.length; i++) {
+                    if (results[i].User && user.toString() == results[i].User.toString()) {
+                        userExit = 1;
+                    }
+                }
+                if(userExit == 0){
+                    error = '用户不存在';
+                    callback(error);
+                }else{
+                    callback(error, userExit, user, pass);
+                }
+            });
+        }, function (userExit, user, pass, callback) {
+            var passCorrect = 0;
+            var sql = 'select Password from user where User = "' + user + '"';
+            connection.query(sql, function (error, results, fields) {
+                if (results[0].Password == pass) {
+                    passCorrect = 1;
+                }
+                if(passCorrect == 0){
+                    error = '密码错误';
+                    callback(error);
+                }else{
+                    callback(error, userExit, passCorrect);
+                }
+            });
+        }, function (userExit, passCorrect, callback) {
+            if (userExit == 1 && passCorrect == 1) {
+                message = 'success';
+            } else {
+                message = 'failed';
+            }
+            callback(null,message);
+        }];
+
+    async.waterfall(tasks, function (err, results) {
+        if (err) {
+            res.send(err);
+        }else{
+            res.send(results);
+        }
+    });
+});
+
 
 module.exports = router;
