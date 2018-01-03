@@ -32,6 +32,4 @@ router.route('/:id')
             res.send(results);
         });
     });
-
-
 module.exports = router;
