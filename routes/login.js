@@ -38,7 +38,7 @@ function checkPassword(user, password) {
     });
 }
 
-var task = []
+var task = [];
 router.post('/', function (req, res) {
     var user = req.body.user;
     var pass = req.body.password;
@@ -52,6 +52,8 @@ router.post('/', function (req, res) {
             var userExit = 0;
             connection.query('select * from user', function (error, results, fields) {
                 for (var i = 0; i < results.length; i++) {
+                    console.log(results[0].User);
+                    console.log(user);
                     if (results[i].User && user.toString() == results[i].User.toString()) {
                         userExit = 1;
                     }
@@ -79,7 +81,7 @@ router.post('/', function (req, res) {
             });
         }, function (userExit, passCorrect, callback) {
             if (userExit == 1 && passCorrect == 1) {
-                message = 'success';
+                message = '成功登录';
             } else {
                 message = 'failed';
             }
